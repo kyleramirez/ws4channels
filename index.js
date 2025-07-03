@@ -26,6 +26,18 @@ const HLS_FILE = path.join(OUTPUT_DIR, 'stream.m3u8');
   if (!fs.existsSync(dir)) fs.mkdirSync(dir);
 });
 
+// Add CORS headers for cross-container access
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+  if (req.method === 'OPTIONS') {
+    res.sendStatus(200);
+  } else {
+    next();
+  }
+});
+
 app.use('/stream', express.static(OUTPUT_DIR));
 app.use('/logo', express.static(LOGO_DIR));
 
@@ -243,7 +255,8 @@ async function stopTranscoding() {
 }
 
 app.get('/playlist.m3u', (req, res) => {
-  const host = req.headers.host || `localhost:${STREAM_PORT}`;
+  // Use the container hostname for Docker networking
+  const host = process.env.CONTAINER_HOST || req.headers.host || `ws4channels:${STREAM_PORT}`;
   const baseUrl = `http://${host}`;
   const m3uContent = `#EXTM3U
 #EXTINF:-1 channel-id="weatherStar4000" tvg-id="weatherStar4000" tvg-channel-no="275" tvc-guide-placeholders="3600" tvc-guide-title="Local Weather" tvc-guide-description="Enjoy your local weather with a touch of nostalgia." tvc-guide-art="${baseUrl}/logo/ws4000.png" tvg-logo="${baseUrl}/logo/ws4000.png",WeatherStar 4000
@@ -254,13 +267,25 @@ ${baseUrl}/stream/stream.m3u8
 });
 
 app.get('/guide.xml', (req, res) => {
-  const host = req.headers.host || `localhost:${STREAM_PORT}`;
+  // Use the container hostname for Docker networking
+  const host = process.env.CONTAINER_HOST || req.headers.host || `ws4channels:${STREAM_PORT}`;
   res.set('Content-Type', 'application/xml');
   res.send(generateXMLTV(host));
 });
 
 app.get('/health', (req, res) => {
   res.status(isStreamReady ? 200 : 503).json({ ready: isStreamReady });
+});
+
+// Add a simple status endpoint for debugging
+app.get('/status', (req, res) => {
+  res.json({
+    ready: isStreamReady,
+    host: process.env.CONTAINER_HOST || req.headers.host || `ws4channels:${STREAM_PORT}`,
+    streamUrl: `http://${process.env.CONTAINER_HOST || req.headers.host || `ws4channels:${STREAM_PORT}`}/stream/stream.m3u8`,
+    playlistUrl: `http://${process.env.CONTAINER_HOST || req.headers.host || `ws4channels:${STREAM_PORT}`}/playlist.m3u`,
+    guideUrl: `http://${process.env.CONTAINER_HOST || req.headers.host || `ws4channels:${STREAM_PORT}`}/guide.xml`
+  });
 });
 
 const { cpus, memoryMB } = getContainerLimits();

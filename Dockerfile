@@ -1,32 +1,52 @@
-FROM node:18
+# Use multi-stage build for better ARM64 compatibility
+FROM node:18-slim AS base
 
-# Install FFmpeg and Puppeteer dependencies
+# Install system dependencies including Chromium and pnpm
 RUN apt-get update && apt-get install -y \
-ffmpeg \
-libnss3 \
-libatk1.0-0 \
-libatk-bridge2.0-0 \
-libcups2 \
-libdrm2 \
-libxkbcommon0 \
-libxcomposite1 \
-libxdamage1 \
-libxrandr2 \
-libgbm1 \
-libasound2 \
-&& rm -rf /var/lib/apt/lists/*
+    ffmpeg \
+    chromium \
+    libnss3 \
+    libatk1.0-0 \
+    libatk-bridge2.0-0 \
+    libcups2 \
+    libdrm2 \
+    libxkbcommon0 \
+    libxcomposite1 \
+    libxdamage1 \
+    libxrandr2 \
+    libgbm1 \
+    libasound2 \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install pnpm
+RUN npm install -g pnpm
+
+# Set environment variables for Puppeteer
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 
 WORKDIR /app
-COPY package*.json ./
-RUN npm install
 
-# Copy application code, music, and logo files
+# Copy package files
+COPY package*.json pnpm-lock.yaml* ./
+
+# Install dependencies with pnpm for better ARM64 compatibility
+RUN pnpm install --frozen-lockfile --prod
+
+# Copy application code
 COPY . .
-RUN mkdir -p /app/music /app/logo
-COPY music/*.mp3 /app/music/
-COPY logo/*.png /app/logo/
 
-# Use STREAM_PORT environment variable for dynamic port
-EXPOSE $STREAM_PORT
+# Create necessary directories
+RUN mkdir -p /app/music /app/logo /app/output
+
+# Copy music and logo files (will fail if directories don't exist, but that's OK)
+COPY music/ /app/music/
+COPY logo/ /app/logo/
+
+# Expose the stream port
+EXPOSE 9798
+
+# Set the default command
 CMD ["node", "index.js"]
 

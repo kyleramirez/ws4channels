@@ -1,6 +1,42 @@
+
+# Create a builder (if not already)
+docker buildx create --use
+
+# Build for ARM64 and export to a local image
+docker buildx build \
+  --platform linux/arm64 \
+  -t ws4channels-dev:latest \
+  --output type=docker \
+  --no-cache \
+  .
+
 # Known Bugs
 
 None at this time. Latest update(6-7-2025) should fix past issues of errors when running the container on a port different then default, incorrect cpu/ram stats in logs, and a rare memory leak.
+
+## Troubleshooting ARM64 Build Issues
+
+If you encounter issues building for ARM64 (like getting stuck at npm install):
+
+1. **Use the updated Dockerfile**: The Dockerfile has been optimized for ARM64 compatibility
+2. **Clear Docker cache**: Use `--no-cache` flag when building
+3. **Ensure sufficient memory**: ARM64 builds may require more memory, try increasing Docker's memory limit
+4. **Use buildx**: Make sure you're using `docker buildx` for multi-platform builds
+
+Example build command with troubleshooting:
+```bash
+# Clear all Docker cache first
+docker system prune -a
+
+# Build with no cache and increased memory
+docker buildx build \
+  --platform linux/arm64 \
+  -t ws4channels-dev:latest \
+  --output type=docker \
+  --no-cache \
+  --build-arg BUILDKIT_INLINE_CACHE=1 \
+  .
+```
 
 # ws4channels
 

@@ -128,12 +128,15 @@ async function startBrowser() {
 
   browser = await puppeteer.launch({
     headless: true,
+    executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium',
     args: [
       '--no-sandbox',
       '--disable-setuid-sandbox',
       '--disable-infobars',
       '--ignore-certificate-errors',
-      '--window-size=1280,720'
+      '--window-size=1280,720',
+      '--disable-dev-shm-usage',
+      '--disable-gpu'
     ],
     defaultViewport: null
   });
